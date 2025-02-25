@@ -1,4 +1,3 @@
-leme = true
 AddHook("onvariant", "variant", function(v)
     if (v[0] == "OnConsoleMessage" and v[1]:find("Spammer")) or (v[0] == "OnTalkBubble" and v[2]:find("Slave")) then
         return true
@@ -25,9 +24,9 @@ AddHook("onvariant", "variant", function(v)
             local number = (number >= 10 and number - 10 or number)
             local result = ""
             if reme or qeme then
-                result = number == 1 and "[`4L`w]" or number == 0 and "[`2X3`w]" or ""
+                result = number == 1 and "[`4LOSE`w]" or number == 0 and "[`2X3`w]" or ""
             elseif leme then
-                result = (number == 2 or number == 9) and "[`4L`w]" 
+                result = (number == 2 or number == 9) and "[`4LOSE`w]" 
                       or number == 1 and "[`2X3`w]" 
                       or number == 0 and "[`2X4`w]" 
                       or ""
@@ -54,24 +53,54 @@ AddHook("onvariant", "variant", function(v)
     return false
 end)
 
+for _, v in pairs({ "reme", "qeme", "leme" }) do _G[v] = false end
+
 AddHook("onsendpacket", "sendpacket", function(t, s)
     local command = {
-        "/[wdb][db]? (%d+)", 
-        "/[pkb] (%s)"
+        "/[wdb][db]?(%d*) (%d+)",
+        "/[rql]"
     }
     if (s:match(command[1])) then
         local syntax, multiplier, amount = s:match("/([wdb][db]?)(%d*) (%d+)")
         local item = {
-            w = 242, dd = 1796, b = 7188, bb = 11550
+            ["bb"] = {"`bBlack Gem", 11550}, ["b"] = {"`cBlue Gem", 7188},
+            ["dd"] = {"`1Diamond", 1796}, ["w"] = {"`6World", 242}
         }
         multiplier = tonumber(multiplier) or 1
         amount = tonumber(amount) or 0
 
-        local packet = string.format(
-            "action|dialog_return\ndialog_name|drop\nitem_drop|%d|\nitem_count|%d", 
-            item[syntax], amount * multiplier
-        )
-        SendPacket(2, packet)
+        local packet = {
+            string.format(
+              "action|dialog_return\ndialog_name|drop\nitem_drop|%d|\nitem_count|%d", 
+              item[syntax][2], amount * multiplier
+            ),
+            string.format(
+              "action|input\ntext|Dropped %d %s Lock",
+              amount * multiplier, item[syntax][1]
+            )
+        }
+        for i = 2, 1, -1 do
+            SendPacket(2, packet[i])
+        end
+        return true
+    end
+	if (s:match(command[2])) then
+        local syntax = s:match("/[rql]")
+        local game = {
+            ["r"] = "reme",
+            ["q"] = "qeme",
+            ["l"] = "leme"
+        }
+        if game[syntax] then
+            reme, qeme, leme = false, false, false
+            _G[game[syntax]] = not _G[game[syntax]]
+            LogToConsole(
+                    _G[game[syntax]] and string.format(
+                    "`4Disabling `wother modes, `2Enabling `w%s mode", 
+                    game[syntax]
+                    ) or "`4All modes disabled"
+            )
+        end
         return true
     end
     return false
