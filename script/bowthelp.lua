@@ -101,7 +101,7 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
             for _, v in pairs(action) do
                 _G[v] = false
             end
-						if not name or name == "" then
+			if not name or name == "" then
 	            _G[action[syntax]] = not _G[action[syntax]]
 	            SendVariantList({
 	                [0] = "OnTalkBubble",
@@ -111,19 +111,17 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
 	                    action[syntax]
 	                    ) or "`4All modes disabled"
 	            })
-			        else
-			            for _, p in pairs(GetPlayerList()) do
-			                if p.name:lower():find(name:lower()) then
-			                    local packet = string.format(
-					                    "action|input\ntext|/%s %s",
-					                     action[syntax], p.name
-					                    )
-			                    SendPacket(2, packet)
-			                    break
-			                end
-            			 end
-								end
-						end
+			else
+			    for _, p in pairs(GetPlayerList()) do
+			        if p.name:lower():find(name:lower()) then
+			            local packet = string.format(
+					                        "action|input\ntext|/%s %s",
+					                        action[syntax], p.name
+					                        )
+			            SendPacket(2, packet)
+			        break
+			    end
+            end
         end
         return true
     end
