@@ -21,17 +21,17 @@ AddHook("onvariant", "variant", function(v)
         local game = reme and "R" or qeme and "Q" or "L"
         if (reme or qeme or leme) then
             local number = qeme and (number == 0 and 1 or number) or ((reme or leme) and (number // 10 + number % 10))
-            local number = (number >= 10 and number - 10 or number)
+            local number = (number >= 10 and tostring(number):sub(2) or number)
             local result = ""
             if reme or qeme then
-                result = number == 1 and "[`4LOSE`w]" or number == 0 and "[`2X3`w]" or ""
+                result = tonumber(number) == 1 and "[`4LOSE`w]" or tonumber(number) == 0 and "[`2X3`w]" or ""
             elseif leme then
                 result = (number == 2 or number == 9) and "[`4LOSE`w]" 
                       or number == 1 and "[`2X3`w]" 
                       or number == 0 and "[`2X4`w]" 
                       or ""
             end
-            local string = string.format("`w[%s : %d]%s", game, number, result)
+            local string = string.format("`w[%s : %d]%s", game, tonumber(number), result)
             SendVariantList({
                 [0] = "OnTalkBubble",
                 [1] = v[1],
@@ -53,11 +53,16 @@ AddHook("onvariant", "variant", function(v)
     return false
 end)
 
-for _, v in pairs({ "reme", "qeme", "leme" }) do _G[v] = false end
+for _, v in pairs({ 
+    "reme", "qeme", "leme", "pull", "kick", "ban"
+}) do 
+    _G[v] = (v == "reme" and true or false)
+end
 
 AddHook("onsendpacket", "sendpacket", function(t, s)
     local command = {
         "/[wdb][db]?(%d*) (%d+)",
+        "/[pkb] (.*)",
         "/[rql]"
     }
     if (s:match(command[1])) then
@@ -84,22 +89,65 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
         end
         return true
     end
-	if (s:match(command[2])) then
-        local syntax = s:match("/[rql]")
+    if (s:match(command[2])) then
+        local syntax, name = s:match("/([pkb]) (.*)")
+        local netid = GetLocal().netid
+        local action = {
+            ["p"] = "pull",
+            ["k"] = "kick",
+            ["b"] = "ban"
+			  }
+        if snytax[action] then
+            for _, v in pairs(action) do
+                _G[v] = false
+            end
+						if not name or name == "" then
+	            _G[action[syntax]] = not _G[action[syntax]]
+	            SendVariantList({
+	                [0] = "OnTalkBubble",
+	                [1] = netid,
+	                [2] = _G[action[syntax]] and string.format(
+	                    "`4Disabling `wother modes, `2Enabling `wfast %s mode", 
+	                    action[syntax]
+	                    ) or "`4All modes disabled"
+	            })
+			        else
+			            for _, p in pairs(GetPlayerList()) do
+			                if p.name:lower():find(name:lower()) then
+			                    local packet = string.format(
+					                    "action|input\ntext|/%s %s",
+					                     action[syntax], p.name
+					                    )
+			                    SendPacket(2, packet)
+			                    break
+			                end
+            			 end
+								end
+						end
+        end
+        return true
+    end
+    if (s:match(command[3])) then
+        local syntax = s:match("/([rql])")
         local game = {
             ["r"] = "reme",
             ["q"] = "qeme",
             ["l"] = "leme"
         }
         if game[syntax] then
-            reme, qeme, leme = false, false, false
+            local netid = GetLocal().netid
+            for _, v in pairs(game) do
+                _G[v] = false
+            end
             _G[game[syntax]] = not _G[game[syntax]]
-            LogToConsole(
-                    _G[game[syntax]] and string.format(
+            SendVariantList({
+                [0] = "OnTalkBubble",
+                [1] = netid,
+                [2] = _G[game[syntax]] and string.format(
                     "`4Disabling `wother modes, `2Enabling `w%s mode", 
                     game[syntax]
                     ) or "`4All modes disabled"
-            )
+            })
         end
         return true
     end
