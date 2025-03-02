@@ -74,6 +74,35 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
         "/[rql]"
     }
 
+    if (s:match("action|wrench\n|netid|(%d+)")) then
+        local netid = s:match("netid|(%d+)")
+        local action = {
+            ["pull"] = "pull", ["kick"] = "kick", 
+            ["ban"] = "world_ban"
+        }
+        for k, v in pairs(action) do
+            if _G[k] then
+                local packet = string.format(
+                    "action|dialog_return\ndialog_name|popup\nnetID|%d|\nbuttonClicked|%s"
+                    netid, v
+                )
+                SendPacket(2, packet)
+                if _G["pull"] then
+                    for _, p in pairs(GetPlayerList()) do
+                        if p.netid:match(netid) then
+                            local packet = string.format(
+                                "action|input\ntext|`wPlay? Mr / Mrs.%s",
+                                p.name
+                            )
+                            SendPacket(2, packet)
+                        end
+                    end
+                end
+            end
+        end
+        return true
+    end
+
     if (s:match(command[1])) then
         local syntax, multiplier, amount = s:match("/([wdb][db]?)(%d*) (%d+)")
         local item = {
