@@ -11,6 +11,18 @@ AddHook("onvariant", "variant", function(v)
             ["Diamond"] = "`1", ["World"] = "`6"
         }
         if amount and valid[item] then
+            if amount >= 100 and item:lower() == "diamond" then
+                local Tx, Ty = GetTele()
+                if Tx and Ty then
+                    local packet = string.format(
+                        "action|dialog_return\ndialog_name|telephone\nnum|53785|\nx|%d|\ny|%d|\nbuttonClicked|bglconvert",
+                        Tx, Ty
+                    )
+                    for i = amount // 100, 0 do
+                        SendPacket(2, packet)
+                    end
+                end
+            end
             local packet = string.format(
                 "action|input\ntext|Collected %s ` %s%s Lock",
                 amount, valid[item], item
@@ -67,6 +79,24 @@ for _, v in pairs({
     _G[v] = (v == "reme" and true or false)
 end
 
+function GetInv(itemid)
+    for _, v in pairs(GetInventory()) do
+        if v.id == itemid then
+            return v.amount
+        end
+    end
+    return 0
+end 
+
+function GetTele()
+    for _, v in pairs(GetTiles()) do
+        if v.fg == 3898 then
+            return v.x, v.y
+        end
+    end
+    return nil, nil
+end
+
 AddHook("onsendpacket", "sendpacket", function(t, s)
     local command = {
         "/[wdb][db]?(%d*) (%d+)",
@@ -77,7 +107,8 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
     if (s:match("action|wrench\n|netid|(%d+)")) then
         local netid = s:match("netid|(%d+)")
         local action = {
-            ["pull"] = "pull", ["kick"] = "kick", 
+            ["pull"] = "pull", 
+            ["kick"] = "kick", 
             ["ban"] = "world_ban"
         }
         for k, v in pairs(action) do
@@ -91,7 +122,7 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
                     for _, p in pairs(GetPlayerList()) do
                         if p.netid:match(netid) then
                             local packet = string.format(
-                                "action|input\ntext|`wPlay? Mr / Mrs.%s",
+                                "action|input\ntext|Play? Mr / Mrs.%s",
                                 p.name
                             )
                             SendPacket(2, packet)
@@ -122,6 +153,42 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
                 amount * multiplier, item[syntax][1]
             )
         }
+        if GetInv(item[syntax][2]) < amount then
+            if syntax == "b" then
+                if GetInv(1796) > 99 then
+                    local Tx, Ty = GetTele()
+                    if Tx and Ty then
+                        local packet = string.format(
+                            "action|dialog_return\ndialog_name|telephone\nnum|53785|\nx|%d|\ny|%d|\nbuttonClicked|bglconvert",
+                            Tx, Ty
+                        )
+                        SendPacket(2, packet)
+                    end
+                else
+                    local packet = GetInv(11550) > 0 and 
+                        "action|dialog_return\ndialog_name|info_box\nbuttonClicked|make_bluegl" 
+                            or 
+                        string.format(
+                            "action|dialog_return\ndialog_name|bank_withdraw\nbgl_count|%s",
+                            amount
+                    )
+                    SendPacket(2, packet)
+                end
+            else
+                if syntax == "bb" then
+                    local packet = GetInv(7188) >= 100 and 
+                        "action|dialog_return\ndialog_name|info_box\nbuttonClicked|make_bgl" 
+                            or 
+                        string.format(
+                            "action|dialog_return\ndialog_name|bank_withdraw\nbgl_count|%s",
+                            amount * 100
+                    )
+                    SendPacket(2, packet)
+                else
+                    SendPacketRaw(false, {type = 10, value = (syntax == "dd" and 7188) or 1796})
+                end
+            end
+        end
         for i = 2, 1, -1 do
             SendPacket(2, packet[i])
         end
@@ -140,17 +207,7 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
             for _, v in pairs(action) do
                 _G[v] = false
             end
-            if not name or name == "" then
-                _G[action[syntax]] = not _G[action[syntax]]
-                SendVariantList({
-                    [0] = "OnTalkBubble",
-                    [1] = netid,
-                    [2] = _G[action[syntax]] and string.format(
-                        "`4Disabling `wother modes, `2Enabling `wfast %s mode", 
-                        action[syntax]
-                    ) or "`4All modes disabled"
-                })
-            else
+            if name or name ~= "" then
                 for _, p in pairs(GetPlayerList()) do
                     if p.name:lower():find(name:lower()) then
                         local clearname = p.name:gsub("`%w", ""):gsub("%p",  ""):gsub("Dr", ""):gsub("%[.-%]", ""):lower()
@@ -162,6 +219,16 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
                         break
                     end
                 end
+            else
+                _G[action[syntax]] = not _G[action[syntax]]
+                SendVariantList({
+                    [0] = "OnTalkBubble",
+                    [1] = netid,
+                    [2] = _G[action[syntax]] and string.format(
+                        "`4Disabling `wother modes, `2Enabling `wfast %s mode", 
+                        action[syntax]
+                    ) or "`4All modes disabled"
+                })
             end
         end
         return true
