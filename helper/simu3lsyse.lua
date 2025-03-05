@@ -11,20 +11,20 @@ AddHook("onvariant", "variant", function(v)
             ["Diamond"] = "`1", ["World"] = "`6"
         }
         if amount and valid[item] then
-            if amount >= 100 and item:lower() == "diamond" then
+            if tonumber(amount) >= 100 and item:lower() == "diamond" then
                 local Tx, Ty = GetTele()
                 if Tx and Ty then
                     local packet = string.format(
                         "action|dialog_return\ndialog_name|telephone\nnum|53785|\nx|%d|\ny|%d|\nbuttonClicked|bglconvert",
                         Tx, Ty
                     )
-                    for i = amount // 100, 0 do
+                    for i = tonumber(amount) // 100, 0, -1 do
                         SendPacket(2, packet)
                     end
                 end
             end
             local packet = string.format(
-                "action|input\ntext|Collected %s ` %s%s Lock",
+                "action|input\ntext|Collected %d ` %s%s Lock",
                 amount, valid[item], item
             )
             SendPacket(2, packet)
@@ -34,14 +34,15 @@ AddHook("onvariant", "variant", function(v)
     if (v[0] == "OnTalkBubble" and v[2]:find("spun the wheel and got `(.+)`!")) then
         local number = tonumber(v[2]:match("got `(.+)`!"):sub(2, -2))
         local game = reme and "R" or qeme and "Q" or "L"
+        local string = ""
         
         if (reme or qeme or leme) then
             local number = qeme and (number == 0 and 1 or number) or ((reme or leme) and (number // 10 + number % 10))
-            local number = (number >= 10 and tostring(number):sub(2) or number)
+            local number = tonumber(number >= 10 and tostring(number):sub(2) or number)
             local result = ""
             
             if reme or qeme then
-                result = tonumber(number) == 1 and "[`4LOSE`w]" or tonumber(number) == 0 and "[`2X3`w]" or ""
+                result = number == 1 and "[`4LOSE`w]" or number == 0 and "[`2X3`w]" or ""
             elseif leme then
                 result = (number == 2 or number == 9) and "[`4LOSE`w]" 
                       or number == 1 and "[`2X3`w]" 
@@ -49,13 +50,13 @@ AddHook("onvariant", "variant", function(v)
                       or ""
             end
             
-            local string = string.format("`w[%s : %d]%s", game, tonumber(number), result)
+            string = string.format("`w[%s : %d]%s", game, tonumber(number), result)
+        end
             SendVariantList({
                 [0] = "OnTalkBubble",
                 [1] = v[1],
                 [2] = v[2] .. string
             })
-        end
         return true
     end
 
@@ -105,33 +106,35 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
     }
 
     if (s:match("action|wrench\n|netid|(%d+)")) then
-        local netid = s:match("netid|(%d+)")
+        local netid = tonumber(s:match("action|wrench\n|netid|(%d+)"))
         local action = {
             ["pull"] = "pull", 
             ["kick"] = "kick", 
             ["ban"] = "world_ban"
         }
-        for k, v in pairs(action) do
-            if _G[k] then
-                local packet = string.format(
-                    "action|dialog_return\ndialog_name|popup\nnetID|%d|\nbuttonClicked|%s"
-                    netid, v
-                )
-                SendPacket(2, packet)
-                if _G["pull"] then
-                    for _, p in pairs(GetPlayerList()) do
-                        if p.netid:match(netid) then
-                            local packet = string.format(
-                                "action|input\ntext|Play? Mr / Mrs.%s",
-                                p.name
-                            )
-                            SendPacket(2, packet)
+        if GetLocal().netid ~= netid then
+            for k, v in pairs(action) do
+                if _G[k] then
+                    local packet = string.format(
+                        "action|dialog_return\ndialog_name|popup\nnetID|%d|\nbuttonClicked|%s",
+                        netid, v
+                    )
+                    SendPacket(2, packet)
+                    if _G["pull"] then
+                        for _, p in pairs(GetPlayerList()) do
+                            if p.netid == netid then
+                                local packet = string.format(
+                                    "action|input\ntext|Play? Mr / Mrs.%s",
+                                    p.name
+                                )
+                                SendPacket(2, packet)
+                            end
                         end
                     end
                 end
             end
+            return true
         end
-        return true
     end
 
     if (s:match(command[1])) then
@@ -185,7 +188,10 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
                     )
                     SendPacket(2, packet)
                 else
-                    SendPacketRaw(false, {type = 10, value = (syntax == "dd" and 7188) or 1796})
+                    local val = (syntax == "dd" and (GetInv(7188) > 0 and 7188 or 242)) or 1796
+                    SendPacketRaw(false, {
+                      type = 10, value = val
+                    })
                 end
             end
         end
@@ -204,30 +210,47 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
             ["b"] = "ban"
         }
         if action[syntax] then
-            for _, v in pairs(action) do
-                _G[v] = false
-            end
-            if name or name ~= "" then
-                for _, p in pairs(GetPlayerList()) do
-                    if p.name:lower():find(name:lower()) then
-                        local clearname = p.name:gsub("`%w", ""):gsub("%p",  ""):gsub("Dr", ""):gsub("%[.-%]", ""):lower()
-                        local packet = string.format(
-                            "action|input\ntext|/%s %s",
-                            action[syntax], clearname
-                        )
-                        SendPacket(2, packet)
-                        break
+            if not _G[action[syntax]] then
+                if not name or name == "" then
+                    for _, v in pairs(action) do
+                        _G[v] = false
+                    end
+                    _G[action[syntax]] = not _G[action[syntax]]
+                    SendVariantList({
+                        [0] = "OnTalkBubble",
+                        [1] = netid,
+                        [2] = _G[action[syntax]] and string.format(
+                            "`4Disabling `wother modes, `2Enabling `wfast %s mode", 
+                            action[syntax]
+                        ) or "`4All modes disabled"
+                    })
+                else
+                    for _, p in pairs(GetPlayerList()) do
+                        if p.name:lower():find(name:lower()) then
+                            local clearname = p.name
+                                              :gsub("%[.-%]", "")
+                                              :gsub("`%w", "")
+                                              :gsub("%p",  "")
+                                              :gsub("Dr", "")
+                                              :lower()
+                            local packet = string.format(
+                                "action|input\ntext|/%s %s",
+                                action[syntax], clearname
+                            )
+                            SendPacket(2, packet)
+                            break
+                        end
                     end
                 end
             else
-                _G[action[syntax]] = not _G[action[syntax]]
+                _G[action[syntax]] = false
                 SendVariantList({
                     [0] = "OnTalkBubble",
                     [1] = netid,
-                    [2] = _G[action[syntax]] and string.format(
-                        "`4Disabling `wother modes, `2Enabling `wfast %s mode", 
+                    [2] = string.format(
+                        "`4Disabling `w%s modes", 
                         action[syntax]
-                    ) or "`4All modes disabled"
+                    ) 
                 })
             end
         end
@@ -236,25 +259,37 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
 
     if (s:match(command[3])) then
         local syntax = s:match("/([rql])")
+        local netid = GetLocal().netid
         local game = {
             ["r"] = "reme",
             ["q"] = "qeme",
             ["l"] = "leme"
         }
         if game[syntax] then
-            local netid = GetLocal().netid
-            for _, v in pairs(game) do
-                _G[v] = false
+            if not _G[game[syntax]] then
+                for _, v in pairs(game) do
+                    _G[v] = false
+                end
+                _G[game[syntax]] = not _G[game[syntax]]
+                SendVariantList({
+                    [0] = "OnTalkBubble",
+                    [1] = netid,
+                    [2] = _G[game[syntax]] and string.format(
+                        "`4Disabling `wother modes, `2Enabling `w%s mode", 
+                        game[syntax]
+                    ) or "`4All modes disabled"
+                })
+            else
+                _G[game[syntax]] = false
+                SendVariantList({
+                    [0] = "OnTalkBubble",
+                    [1] = netid,
+                    [2] = string.format(
+                          "`4Disabling `w%s modes", 
+                          game[syntax]
+                    ) 
+                })
             end
-            _G[game[syntax]] = not _G[game[syntax]]
-            SendVariantList({
-                [0] = "OnTalkBubble",
-                [1] = netid,
-                [2] = _G[game[syntax]] and string.format(
-                    "`4Disabling `wother modes, `2Enabling `w%s mode", 
-                    game[syntax]
-                ) or "`4All modes disabled"
-            })
         end
         return true
     end
