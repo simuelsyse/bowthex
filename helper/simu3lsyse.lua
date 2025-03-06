@@ -1,6 +1,5 @@
 AddHook("onvariant", "variant", function(v)
-    if (v[0] == "OnConsoleMessage" and v[1]:find("Spammer")) or 
-       (v[0] == "OnTalkBubble" and v[2]:find("Slave")) then
+    if (v[0] == "OnConsoleMessage" and v[1]:find("Spammer")) or (v[0] == "OnTalkBubble" and v[2]:find("Slave")) then
         return true
     end
 
@@ -11,18 +10,6 @@ AddHook("onvariant", "variant", function(v)
             ["Diamond"] = "`1", ["World"] = "`6"
         }
         if amount and valid[item] then
-            if tonumber(amount) >= 100 and item:lower() == "diamond" then
-                local Tx, Ty = GetTele()
-                if Tx and Ty then
-                    local packet = string.format(
-                        "action|dialog_return\ndialog_name|telephone\nnum|53785|\nx|%d|\ny|%d|\nbuttonClicked|bglconvert",
-                        Tx, Ty
-                    )
-                    for i = tonumber(amount) // 100, 0, -1 do
-                        SendPacket(2, packet)
-                    end
-                end
-            end
             local packet = string.format(
                 "action|input\ntext|Collected %d ` %s%s Lock",
                 amount, valid[item], item
@@ -69,6 +56,10 @@ AddHook("onvariant", "variant", function(v)
     end
 
     if (v[0] == "OnSDBroadcast") then
+        return true
+    end
+
+    if (v[1]== "Telephone") then
         return true
     end
     return false
@@ -146,58 +137,37 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
         multiplier = tonumber(multiplier) or 1
         amount = tonumber(amount) or 0
 
-        local packet = {
-            string.format(
-                "action|dialog_return\ndialog_name|drop\nitem_drop|%d|\nitem_count|%d", 
-                item[syntax][2], amount * multiplier
-            ),
-            string.format(
-                "action|input\ntext|Dropped %d %s Lock",
-                amount * multiplier, item[syntax][1]
-            )
+        local packet = string.format(
+            "action|input\ntext|Dropped %d %s Lock",
+            amount * multiplier, item[syntax][1]
+        )   
+        _G.dropdata = {
+            amount * multiplier,
+            item[syntax][2]
         }
         if GetInv(item[syntax][2]) < amount then
             if syntax == "b" then
-                if GetInv(1796) > 99 then
-                    local Tx, Ty = GetTele()
-                    if Tx and Ty then
-                        local packet = string.format(
-                            "action|dialog_return\ndialog_name|telephone\nnum|53785|\nx|%d|\ny|%d|\nbuttonClicked|bglconvert",
-                            Tx, Ty
-                        )
-                        SendPacket(2, packet)
-                    end
-                else
-                    local packet = GetInv(11550) > 0 and 
-                        "action|dialog_return\ndialog_name|info_box\nbuttonClicked|make_bluegl" 
-                            or 
-                        string.format(
-                            "action|dialog_return\ndialog_name|bank_withdraw\nbgl_count|%s",
-                            amount
-                    )
-                    SendPacket(2, packet)
-                end
+                local packet = GetInv(11550) > 0 and 
+                    "action|dialog_return\ndialog_name|info_box\nbuttonClicked|make_bluegl" 
+                        or 
+                    string.format(
+                        "action|dialog_return\ndialog_name|bank_withdraw\nbgl_count|%s",
+                        amount
+                )
+                SendPacket(2, packet)
             else
                 if syntax == "bb" then
-                    local packet = GetInv(7188) >= 100 and 
-                        "action|dialog_return\ndialog_name|info_box\nbuttonClicked|make_bgl" 
-                            or 
+                    if GetInv(11550) == 0 then
                         string.format(
                             "action|dialog_return\ndialog_name|bank_withdraw\nbgl_count|%s",
                             amount * 100
-                    )
-                    SendPacket(2, packet)
-                else
-                    local val = (syntax == "dd" and (GetInv(7188) > 0 and 7188 or 242)) or 1796
-                    SendPacketRaw(false, {
-                      type = 10, value = val
-                    })
+                        )   
+                        SendPacket(2, packet)
+                    end
                 end
             end
         end
-        for i = 2, 1, -1 do
-            SendPacket(2, packet[i])
-        end
+        SendPacket(2, packet)
         return true
     end
 
@@ -221,7 +191,7 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
                         [1] = netid,
                         [2] = _G[action[syntax]] and string.format(
                             "`4Disabling `wother modes, `2Enabling `wfast %s mode", 
-                            action[syntax]
+                            action[syntax]:upper()
                         ) or "`4All modes disabled"
                     })
                 else
@@ -249,7 +219,7 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
                     [1] = netid,
                     [2] = string.format(
                         "`4Disabling `w%s modes", 
-                        action[syntax]
+                        action[syntax]:upper()
                     ) 
                 })
             end
@@ -276,7 +246,7 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
                     [1] = netid,
                     [2] = _G[game[syntax]] and string.format(
                         "`4Disabling `wother modes, `2Enabling `w%s mode", 
-                        game[syntax]
+                        game[syntax]:upper()
                     ) or "`4All modes disabled"
                 })
             else
@@ -286,7 +256,7 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
                     [1] = netid,
                     [2] = string.format(
                           "`4Disabling `w%s modes", 
-                          game[syntax]
+                          game[syntax]:upper()
                     ) 
                 })
             end
@@ -294,4 +264,43 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
         return true
     end
     return false
+end)
+
+RunThread(function()
+    while true do
+        Sleep(100)
+        for _, v in pairs({7188, 1796, 242}) do
+            if GetInv(v) > 99 then
+                if v == 7188 then
+                    local packet = "action|dialog_return\ndialog_name|info_box\nbuttonClicked|make_bgl" 
+                    SendPacket(2, packet)
+                else
+                    if v == 1796 then
+                        local Tx, Ty = GetTele()
+                        if Tx and Ty then
+                            local packet = string.format(
+                                "action|dialog_return\ndialog_name|telephone\nnum|53785|\nx|%d|\ny|%d|\nbuttonClicked|bglconvert",
+                                Tx, Ty
+                            )
+                            SendPacket(2, packet)
+                        end
+                    else
+                        SendPacketRaw({
+                            type = 10, 
+                            value = 242
+                        })
+                    end
+                end
+            end
+            Sleep(100)
+        end
+        if _G.dropdata ~= nil then
+            local packet = string.format(
+                "action|dialog_return\ndialog_name|drop\nitem_drop|%d|\nitem_count|%d", 
+                _G.dropdata[2], _G.dropdata[1]
+            )
+            SendPacket(2, packet)
+            _G.dropdata = nil
+        end
+    end
 end)
