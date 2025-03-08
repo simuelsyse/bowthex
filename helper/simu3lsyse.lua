@@ -68,7 +68,7 @@ end)
 for _, v in pairs({ 
     "reme", "qeme", "leme", "pull", "kick", "ban"
 }) do 
-    _G[v] = (v == "reme" and true or false)
+    _G[v] = (v == "reme")
 end
 
 function GetInv(itemid)
@@ -88,6 +88,50 @@ function GetTele()
     end
     return nil, nil
 end
+
+VendScanner = {
+    function GetValidVend()
+        local vends, items = {}, {}
+        local valid = false
+        if not valid then
+            for _, v in pairs(GetTiles()) do
+                if v.fg == 9268 and v.extra.owner ~= 0 then
+                    local itemid = v.extra.lastupdate
+                    local price = v.extra.owner
+                    if not items[itemid] or math.abs(price) < math.abes(items[temid].price) then
+                        vends = {
+                            id = itemid, price = price,
+                            x = v.x, y = v.y
+                        }
+                    end
+                end
+            end
+            for _, v in pairs(vends) do
+                table.insert(items, v)
+            end
+            valid = not valid
+            return items
+        else
+            return
+        end
+    end
+    
+    function FindSpecificVend(item)
+        GetValidVend()
+        local vend = item:gsub("%s+", ".*"):lower()
+        for _, v in pairs(items) do
+            local name = GetItemInfo(v.id).name:lower()
+            if name:find(vend) then
+                target = v
+                return
+            end
+        end
+    end
+
+    function SendScanResult()
+        
+}
+
 
 AddHook("onsendpacket", "sendpacket", function(t, s)
     local command = {
