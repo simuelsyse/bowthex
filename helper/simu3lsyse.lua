@@ -71,6 +71,10 @@ for _, v in pairs({
     _G[v] = (v == "reme")
 end
 
+_S = {s_q = nil, s_i = nil}
+_V = {s_i = {}, f_i = {}}
+_D = {m_p = 40, d_p = 1}
+
 function GetInv(itemid)
     for _, v in pairs(GetInventory()) do
         if v.id == itemid then
@@ -89,55 +93,138 @@ function GetTele()
     return nil, nil
 end
 
-VendScanner = {
-    function GetValidVend()
-        local vends, items = {}, {}
-        local valid = false
-        if not valid then
+function VendScanner()
+    _G.scanned = false
+    local function ScanAllVend()
+        if _G.scanned then
+            return
+        else
+            local id = {}
             for _, v in pairs(GetTiles()) do
-                if v.fg == 9268 and v.extra.owner ~= 0 then
-                    local itemid = v.extra.lastupdate
-                    local price = v.extra.owner
-                    if not items[itemid] or math.abs(price) < math.abes(items[temid].price) then
-                        vends = {
-                            id = itemid, price = price,
-                            x = v.x, y = v.y
-                        }
+                if v.fg == 9268 then
+                    local ex = v.extra
+                    if ex.owner ~= 0 and ex.lastupdate ~= 0 then
+                        if not id[ex.lastupdate] or 
+                           math.abs(ex.owner) < math.abs(id[ex.lastupdate].price) 
+                        then
+                            id[ex.lastupdate] = {
+                                itemid = ex.lastupdate,
+                                price = ex.owner,
+                                x = v.x, y = v.y
+                            }
+                        end
                     end
                 end
             end
-            for _, v in pairs(vends) do
-                table.insert(items, v)
+            _V.s_i = {}
+            for _, v in pairs(id) do
+                table.insert(_V.s_i, v)
             end
-            valid = not valid
-            return items
-        else
-            return
         end
     end
     
-    function FindSpecificVend(item)
-        GetValidVend()
-        local vend = item:gsub("%s+", ".*"):lower()
-        for _, v in pairs(items) do
-            local name = GetItemInfo(v.id).name:lower()
-            if name:find(vend) then
-                target = v
+    local function FindSpecificVend()
+        ScanAllVend()
+        _V.f_i = {}
+        for _, v in pairs(_V.s_i) do
+            local query = _S.s_q:gsub("%s", ".*"):lower()
+            local data = GetItemInfo(v.itemid).name
+            if data:lower():find(query) then
+                _S.s_i = v
+                local packet = string.format(
+                    "action|input\ntext|Finding `2%s",
+                    data
+                )
+                SendPacket(2, packet)
                 return
             end
         end
+        local packet = string.format(
+            "action|input\ntext|The item you looking for is `4NOT LISTED!"
+        )
+        SendPacket(2, packet)
     end
-
-    function SendScanResult()
-        
-}
-
+    
+    local function SendResult()
+        local display = _V.s_i
+        vw = {
+            "add_quick_exit|",
+            "add_label_with_icon|big|`wList `2Scanned `wVend|left|9268|",
+            "add_smalltext|`9Find an item that you looking for!|",
+            "add_spacer|small|",
+            "add_label_with_icon|small|`wLookin for `4SPECIFIC `witem?|left|6016|",
+            "add_text_input|query|`wSearch item :||32|",
+            "add_spacer|small|",
+            "add_small_font_button|search|`9Search It!|noflags|0|0|",
+            "add_spacer|small|",
+            "add_label_with_icon|small|`wScanned Vend :|left|9268|",
+            "add_spacer|small|"
+        }
+        if _S.s_q and _S.s_q:match("%S") then
+            _V.f_i = {}
+            local query = _S.s_q:gsub("%s+", ".*"):lower()
+            for _, v in pairs(_V.s_i) do
+                local data = GetItemInfo(v.itemid).name
+                if data:lower():find(query) then
+                    table.insert(_V.f_i, v)
+                end
+            end
+            display = _V.f_i
+        end
+        _D.d_p = math.max(1, math.min(_D.d_p, 40))
+        local page = math.ceil(#display / 40)
+        if #display ~= 0 then
+            local s = (_D.d_p - 1) * 40 + 1
+            local e = math.min(s + 39, #display)
+            for i = s, e do
+                pformat = (display[i].price < 0) and
+                    string.format(
+                      "`4On Sale `2%d `w%s for `91 World Lock",
+                      math.abs(display[i].price),
+                      GetItemInfo(display[i].itemid).name
+                    )
+                          or
+                    string.format(
+                      "`4On Sale `2%s `wfor `9%d World Locks",
+                      GetItemInfo(display[i].itemid).name,
+                      display[i].price
+                    )
+                table.insert(vw, string.format(
+                    "add_label_with_icon_button|small|%s|left|%d|%d|\nadd_spacer|small|",
+                    pformat, display[i].itemid, i
+                ))
+            end
+        else
+            table.insert(vw, "add_smalltext|`4Vend that you looking for not available!|")  
+        end
+        for k, v in pairs({
+            npage = _D.d_p < 40, 
+            ppage = _D.d_p > 1
+        }) do  
+            if v then  
+                table.insert(vw, string.format(
+                    "add_small_font_button|%s|`9%s Page|noflags|0|0|", 
+                    k, k == "npage" and "Next" or "Previous"
+                ))  
+            end  
+        end
+        table.insert(vw, "end_dialog|vscan|All good.||")
+        SendVariantList({ 
+            [0] = "OnDialogRequest", 
+            [1] = table.concat(vw, "\n") 
+        })
+    end
+    return {
+        SAV = ScanAllVend, FSV = FindSpecificVend, SR = SendResult
+    }
+end
 
 AddHook("onsendpacket", "sendpacket", function(t, s)
     local command = {
         "/[wdb][db]?(%d*) (%d+)",
         "/[pkb]%s?(.*)",
-        "/[rql]"
+        "/[rql]",
+        "/[v]%s?(.*)"
     }
 
     if (s:match("action|wrench\n|netid|(%d+)")) then
@@ -202,7 +289,7 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
             else
                 if syntax == "bb" then
                     if GetInv(11550) == 0 then
-                        string.format(
+                        local packet = string.format(
                             "action|dialog_return\ndialog_name|bank_withdraw\nbgl_count|%s",
                             amount * 100
                         )   
@@ -307,6 +394,48 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
         end
         return true
     end
+    
+    if s:match("action|dialog_return\ndialog_name|vscan\nbuttonClicked|search") then
+        local query = s:match("query|(.*)")
+        if query and query:match("%S") then  
+            _S.s_q= query:gsub("%s+", ".*"):lower()
+        else
+            _S.s_q = nil  
+        end
+        VendScanner().SR()
+        return true
+    end
+
+    if s:match("action|dialog_return\ndialog_name|vscan\nbuttonClicked|(%d+)") then
+        local index = tonumber(s:match("buttonClicked|(%d+)"))
+        _S.s_i = _V.f_i[index] or _V.s_i[index]
+        return true
+    end
+
+    if s:match("action|dialog_return\ndialog_name|vscan\nbuttonClicked|(%a+)") then
+        local button = s:match("buttonClicked|(%a+)")
+        if button == "npage" then
+            _D.d_p = _D.d_p + 1
+        else
+            _D.d_p = _D.d_p - 1
+        end
+        VendScanner().SR()
+        return true
+    end
+    
+    if (s:match(command[4])) then
+        local syntax, query = s:match("/([v])%s?(.*)")
+        _G.scanned = true
+        _S.s_q = query 
+        if query ~= "" then
+            VendScanner().FSV()
+        else
+            VendScanner().SAV()
+            VendScanner().SR()
+        end
+        return true
+    end
+    
     return false
 end)
 
@@ -346,5 +475,10 @@ RunThread(function()
             SendPacket(2, packet)
             _G.dropdata = nil
         end
+        if _S.s_i then
+            FindPath(_S.s_i.x, _S.s_i.y)
+            VendScanner().SAV()
+            _S.s_i = nil
+        end 
     end
 end)
