@@ -147,7 +147,7 @@ function VendScanner()
     
     local function SendResult()
         local display = _V.s_i
-        vw = {
+        local dialog = {
             "add_quick_exit|",
             "add_label_with_icon|big|`wList `2Scanned `wVend|left|9268|",
             "add_smalltext|`9Find an item that you looking for!|",
@@ -189,13 +189,13 @@ function VendScanner()
                       GetItemInfo(display[i].itemid).name,
                       display[i].price
                     )
-                table.insert(vw, string.format(
+                table.insert(dialog, string.format(
                     "add_label_with_icon_button|small|%s|left|%d|%d|\nadd_spacer|small|",
                     pformat, display[i].itemid, i
                 ))
             end
         else
-            table.insert(vw, "add_smalltext|`4Vend that you looking for not available!|")  
+            table.insert(dialog, "add_smalltext|`4Vend that you looking for not available!|")  
         end
         for k, v in pairs({
             npage = _D.d_p < 40, 
@@ -211,7 +211,7 @@ function VendScanner()
         table.insert(vw, "end_dialog|vscan|All good.||")
         SendVariantList({ 
             [0] = "OnDialogRequest", 
-            [1] = table.concat(vw, "\n") 
+            [1] = table.concat(dialog, "\n") 
         })
     end
     return {
@@ -224,7 +224,8 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
         "/[wdb][db]?(%d*) (%d+)",
         "/[pkb]%s?(.*)",
         "/[rql]",
-        "/[v]%s?(.*)"
+        "/[v]%s?(.*)",
+        "/cmd"
     }
 
     if (s:match("action|wrench\n|netid|(%d+)")) then
@@ -435,7 +436,33 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
         end
         return true
     end
-    
+
+    if (s:match(command[5])) then
+        local dialog = {
+            "add_quick_exit|",
+            "add_label_with_icon|big|`wList `2Command|left|7188|",
+            "add_smalltext|`9All the command that you can use!|",
+            "add_spacer|small|",
+            "add_textbox|Fast Wrench or Shortcut command : `9/p /k /b|",
+            "add_smalltext|`4Note : Just type /p etc to activate fast wrench mode|",
+            "add_smalltext|`wUsage : /p (player name) or /p|",
+            "add_spacer|small|",
+            "add_textbox|Drop command : `9/w /dd /b /bb|",
+            "add_smalltext|`wUsage : /dd(multiplier) (amount)|",
+            "add_spacer|small|",
+            "add_textbox|Game command : `9/r /q /l|",
+            "add_smalltext|`wUsage : /r|",
+            "add_spacer|small|",
+            "add_textbox|Vendscnanner : `9/v|",
+            "add_smalltext|`4Note : You can just type /v to scan all the vend|",
+            "add_smalltext|`wUsage : /v (item name)|"
+        }
+        SendVariantList({ 
+            [0] = "OnDialogRequest", 
+            [1] = table.concat(dialog, "\n") 
+        })
+        return true
+    end
     return false
 end)
 
