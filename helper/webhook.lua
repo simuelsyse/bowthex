@@ -1,4 +1,4 @@
-local webhook = [[
+local webhookcontent = [[
 {
     "embeds": [
         {
