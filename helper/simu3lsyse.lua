@@ -1,3 +1,26 @@
+local file = {
+    path = "/storage/emulated/0/Android/media/com.rtsoft.growtopia/.simu3lsyse.rttex"
+}
+local gazzete = {
+      
+    "add_label_with_icon|big|`9Simu3lsyse Helper Gazzete!|left|11550|",
+    "add_smalltext|`whttps://discord.gg/N59BWcYxeG|",
+    "add_spacer|small|",
+    "add_image_button|banner|" .. file.path .. "|simu3lsyse|mumu|",
+    "add_spacer|small|",
+    "add_label_with_icon|small|`9Thank you for choosing Simu3lsyse as Your Helper!|left|7074|",
+    "add_smalltext|`wNote : `9This script is all free! please do not resell it at any circumstantes|",
+    "add_spacer|small|",
+    "add_label_with_icon|small|`2Changelogs :|left|9472|",
+    "add_spacer|small|",
+    "add_label_with_icon|small|`9Make the Script Online|left|482|",
+    "add_spacer|small|",
+    "add_label_with_icon|small|`9Improvise the UI|left|482|",
+    "add_spacer|small|",
+    "end_dialog|simu3lsyse||ENJOY!|"
+}
+SendVariantList({[0] = "OnDialogRequest", [1] = table.concat(gazzete, "\n")})
+
 AddHook("onvariant", "variant", function(v)
     if (v[0] == "OnConsoleMessage" and v[1]:find("Spammer")) or (v[0] == "OnTalkBubble" and v[2]:find("Slave")) then
         return true
@@ -194,21 +217,21 @@ function VendScanner()
                     pformat, display[i].itemid, i
                 ))
             end
+            for k, v in pairs({
+                npage = _D.d_p < 40, 
+                ppage = _D.d_p > 1
+            }) do  
+                if v then  
+                    table.insert(dialog, string.format(
+                        "add_small_font_button|%s|`9%s Page|noflags|0|0|", 
+                        k, k == "npage" and "Next" or "Previous"
+                    ))  
+                end  
+            end
         else
             table.insert(dialog, "add_smalltext|`4Vend that you looking for not available!|")  
         end
-        for k, v in pairs({
-            npage = _D.d_p < 40, 
-            ppage = _D.d_p > 1
-        }) do  
-            if v then  
-                table.insert(vw, string.format(
-                    "add_small_font_button|%s|`9%s Page|noflags|0|0|", 
-                    k, k == "npage" and "Next" or "Previous"
-                ))  
-            end  
-        end
-        table.insert(vw, "end_dialog|vscan|All good.||")
+        table.insert(dialog, "end_dialog|vscan|All good.||")
         SendVariantList({ 
             [0] = "OnDialogRequest", 
             [1] = table.concat(dialog, "\n") 
@@ -247,7 +270,7 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
                         for _, p in pairs(GetPlayerList()) do
                             if p.netid == netid then
                                 local packet = string.format(
-                                    "action|input\ntext|Play? Mr / Mrs.%s",
+                                    "action|input\ntext|`2Play? `9Mr / Mrs.%s",
                                     p.name
                                 )
                                 SendPacket(2, packet)
@@ -440,22 +463,24 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
     if (s:match(command[5])) then
         local dialog = {
             "add_quick_exit|",
-            "add_label_with_icon|big|`wList `2Command|left|7188|",
+            "add_label_with_icon|big|`wList `2Command|left|5956|",
             "add_smalltext|`9All the command that you can use!|",
             "add_spacer|small|",
-            "add_textbox|Fast Wrench or Shortcut command : `9/p /k /b|",
-            "add_smalltext|`4Note : Just type /p etc to activate fast wrench mode|",
-            "add_smalltext|`wUsage : /p (player name) or /p|",
+            "add_label_with_icon|small|`wFast Wrench or Shortcut command : `9/p /k /b|left|32|",
+            "add_smalltext|`4Note : Just type /p to activate fast wrench mode|",
+            "add_smalltext|`2Usage : /p (player name) or /p|",
             "add_spacer|small|",
-            "add_textbox|Drop command : `9/w /dd /b /bb|",
-            "add_smalltext|`wUsage : /dd(multiplier) (amount)|",
+            "add_label_with_icon|small|`wDrop command : `9/w /dd /b /bb|left|5260|",
+            "add_smalltext|`2Usage : /dd(multiplier) (amount)|",
             "add_spacer|small|",
-            "add_textbox|Game command : `9/r /q /l|",
-            "add_smalltext|`wUsage : /r|",
+            "add_label_with_icon|small|`wGame command : `9/r /q /l|left|758|",
+            "add_smalltext|`2Usage : /r|",
             "add_spacer|small|",
-            "add_textbox|Vendscnanner : `9/v|",
+            "add_label_with_icon|small|`wVendscanner : `9/v|left|9268|",
             "add_smalltext|`4Note : You can just type /v to scan all the vend|",
-            "add_smalltext|`wUsage : /v (item name)|"
+            "add_smalltext|`2Usage : /v (item name)|",
+            "add_spacer|small|",
+            "end_dialog|cmd||Thank You!|"
         }
         SendVariantList({ 
             [0] = "OnDialogRequest", 
