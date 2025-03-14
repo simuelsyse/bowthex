@@ -11,7 +11,7 @@ local webhookcontent = [[
                 "fields": [
                     {
                         "name": "Username :",
-                        "value": "<:medal:1349703416942694491> ]] .. GetLocal().name:gsub("`%w", ""):gsub("%p",  "") .. [[",
+                        "value": "<:badge:1349703416942694491> ]] .. GetLocal().name:gsub("`%w", ""):gsub("%p",  "") .. [[",
                         "inline": true
                     },
                     {
