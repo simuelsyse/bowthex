@@ -13,7 +13,7 @@ local gazzete = {
     "add_spacer|small|",
     "add_label_with_icon|small|`2Changelogs :|left|9472|",
     "add_spacer|small|",
-    "add_label_with_icon|small|`9Make the Script Online|left|482|",
+    "add_label_with_icon|small|`9Fixed the auto convert Locks|left|482|",
     "add_spacer|small|",
     "add_label_with_icon|small|`9Improvise the UI|left|482|",
     "add_spacer|small|",
@@ -296,10 +296,6 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
             "action|input\ntext|Dropped %d %s Lock",
             amount * multiplier, item[syntax][1]
         )   
-        _G.dropdata = {
-            amount * multiplier,
-            item[syntax][2]
-        }
         if GetInv(item[syntax][2]) < amount then
             if syntax == "b" then
                 local packet = GetInv(11550) > 0 and 
@@ -323,6 +319,10 @@ AddHook("onsendpacket", "sendpacket", function(t, s)
             end
         end
         SendPacket(2, packet)
+        _G.dropdata = {
+            amount * multiplier,
+            item[syntax][2]
+        }
         return true
     end
 
@@ -510,7 +510,7 @@ RunThread(function()
                             SendPacket(2, packet)
                         end
                     else
-                        SendPacketRaw({
+                        SendPacketRaw(false, {
                             type = 10, 
                             value = 242
                         })
